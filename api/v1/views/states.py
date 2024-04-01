@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 """Defines the views of handling states in the API"""
+from json import dumps
 from api.v1.views import app_views
-from flask import jsonify, request
+from flask import Response, request
 from models import storage
 from models.state import State
-from werkzeug.exceptions import NotFound, MethodNotAllowed, BadRequest
+from werkzeug.exceptions import MethodNotAllowed, BadRequest
 
 
 HTTP_METHODS = ["GET", "DELETE", "POST", "PUT"]
@@ -33,10 +34,18 @@ def getStates(state_id=None):
     if state_id:
         state_list = list(filter(lambda x: x.id == state_id, state_objs))
         if state_list:
-            return jsonify(state_list[0].to_dict())
-        raise NotFound()
+            state_dict = state_list[0].to_dict()
+            res_data = dumps(state_dict, indent=2)
+            return Response(res_data,
+                            content_type='application/json; charset=utf-8')
+        else:
+            errmsg = {"error": "Not found"}
+            res_data = dumps(errmsg, indent=2)
+            return Response(res_data,
+                            content_type='application/json; charset=utf-8')
     state_objs = list(map(lambda x: x.to_dict(), state_objs))
-    return jsonify(state_objs)
+    res_data = dumps(state_objs, indent=2)
+    return Response(res_data, content_type='application/json; charset=utf-8')
 
 
 def deleteStates(state_id=None):
@@ -46,8 +55,14 @@ def deleteStates(state_id=None):
     if state_list:
         storage.delete(state_list[0])
         storage.save()
-        return jsonify({}), 200
-    raise NotFound()
+        res_data = dumps({}, indent=2)
+        return Response(res_data, status=200,
+                        content_type='application/json; charset=utf-8')
+    else:
+        errmsg = {"error": "Not found"}
+        res_data = dumps(errmsg, indent=2)
+        return Response(res_data,
+                        content_type='application/json; charset=utf-8')
 
 
 def postStates(state_id=None):
@@ -59,7 +74,9 @@ def postStates(state_id=None):
         raise BadRequest(description="Missing name")
     created_state = State(**state_data)
     created_state.save()
-    return jsonify(created_state.to_dict()), 201
+    res_data = dumps(created_state.to_dict(), indent=2)
+    return Response(res_data, status=201,
+                    content_type='application/json; charset=utf-8')
 
 
 def putStates(state_id=None):
@@ -76,5 +93,11 @@ def putStates(state_id=None):
             if key not in immut_attrs:
                 setattr(prev_state, key, value)
         prev_state.save()
-        return jsonify(prev_state.to_dict()), 200
-    raise NotFound()
+        res_data = dumps(prev_state.to_dict(), indent=2)
+        return Response(res_data, status=200,
+                        content_type='application/json; charset=utf-8')
+    else:
+        errmsg = {"error": "Not found"}
+        res_data = dumps(errmsg, indent=2)
+        return Response(res_data,
+                        content_type='application/json; charset=utf-8')
