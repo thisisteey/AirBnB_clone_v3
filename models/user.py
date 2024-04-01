@@ -32,9 +32,8 @@ class User(BaseModel, Base):
     def __setattr__(self, attr_name: str, attr_value) -> None:
         """Sets the attributes of user to a given value"""
         if attr_name == "password":
-            if isinstance(attr_value, str):
-                hash_obj = md5(bytes(attr_value, "utf-8"))
+            if type(attr_value) is str:
+                hash_obj = md5(bytes(attr_value, 'utf-8'))
                 super().__setattr__(attr_name, hash_obj.hexdigest())
             else:
                 super().__setattr__(attr_name, attr_value)
-

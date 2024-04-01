@@ -1,19 +1,14 @@
 #!/usr/bin/python3
 """Defines the views of handling amenities in the API"""
-from json import dumps
 from api.v1.views import app_views
-from flask import Response, request
+from flask import make_response, jsonify, request
 from models import storage
 from models.amenity import Amenity
-from werkzeug.exceptions import MethodNotAllowed, BadRequest
+from werkzeug.exceptions import MethodNotAllowed, BadRequest, NotFound()
 
 
-HTTP_METHODS = ["GET", "DELETE", "POST", "PUT"]
-"""HTTP methods supported for the amenities endpoint"""
-
-
-@app_views.route("/amenities", methods=HTTP_METHODS)
-@app_views.route("/amenities/<amenity_id>", methods=HTTP_METHODS)
+@app_views.route("/amenities", methods=['GET', 'POST'])
+@app_views.route("/amenities/<amenity_id>", methods=['GET', 'DELETE', 'POST'])
 def amenity_handler(amenity_id=None):
     """Handler function for the amenities endpoint"""
     handlers = {
@@ -34,18 +29,10 @@ def getAmenities(amenity_id=None):
     if amenity_id:
         amenity_list = list(filter(lambda x: x.id == amenity_id, amenity_objs))
         if amenity_list:
-            amenity_dict = amenity_list[0].to_dict()
-            res_data = dumps(amenity_dict, indent=2)
-            return Response(res_data,
-                            content_type='application/json; charset=utf-8')
-        else:
-            errmsg = {"error": "Not found"}
-            res_data = dumps(errmsg, indent=2)
-            return Response(res_data,
-                            content_type='application/json; charset=utf-8')
+            return make_response(jsonify(amenity_list[0].to_dict()))
+        raise NotFound()
     amenity_objs = list(map(lambda x: x.to_dict(), amenity_objs))
-    res_data = dumps(amenity_objs, indent=2)
-    return Response(res_data, content_type='application/json; charset=utf-8')
+    return make_response(jsonify(amenity_objs))
 
 
 def deleteAmenities(amenity_id=None):
@@ -55,14 +42,8 @@ def deleteAmenities(amenity_id=None):
     if amenity_list:
         storage.delete(amenity_list[0])
         storage.save()
-        res_data = dumps({}, indent=2)
-        return Response(res_data, status=200,
-                        content_type='application/json; charset=utf-8')
-    else:
-        errmsg = {"error": "Not found"}
-        res_data = dumps(errmsg, indent=2)
-        return Response(res_data,
-                        content_type='application/json; charset=utf-8')
+        return make_response(jsonify({}), 200)
+    raise NotFound()
 
 
 def postAmenities(amenity_id=None):
@@ -74,9 +55,7 @@ def postAmenities(amenity_id=None):
         raise BadRequest(description="Missing name")
     created_amenity = Amenity(**amenity_data)
     created_amenity.save()
-    res_data = dumps(created_amenity.to_dict(), indent=2)
-    return Response(res_data, status=201,
-                    content_type='application/json; charset=utf-8')
+    return make_response(jsonify(created_amenity.to_dict()), 201)
 
 
 def putAmenities(amenity_id=None):
@@ -93,11 +72,5 @@ def putAmenities(amenity_id=None):
             if key not in immut_attrs:
                 setattr(prev_amenity, key, value)
         prev_amenity.save()
-        res_data = dumps(prev_amenity.to_dict(), indent=2)
-        return Response(res_data, status=200,
-                        content_type='application/json; charset=utf-8')
-    else:
-        errmsg = {"error": "Not found"}
-        res_data = dumps(errmsg, indent=2)
-        return Response(res_data,
-                        content_type='application/json; charset=utf-8')
+        return make_response(jsonify(prev_amenity.to_dict()), 200)
+    raise NotFound()

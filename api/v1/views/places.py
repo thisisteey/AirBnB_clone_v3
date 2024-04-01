@@ -1,23 +1,16 @@
 #!/usr/bin/python3
 """Defines the views of handling places in the API"""
-from json import dumps
 from api.v1.views import app_views
-from flask import Response, request
+from flask import make_response, request, jsonify
 from models import storage, storage_t
 from models.place import Place
 from models.city import City
 from models.user import User
-from models.state import State
-from models.amenity import Amenity
-from werkzeug.exceptions import MethodNotAllowed, BadRequest
+from werkzeug.exceptions import MethodNotAllowed, BadRequest, NotFound
 
 
-HTTP_METHODS = ["GET", "DELETE", "POST", "PUT"]
-"""HTTP methods supported for the places endpoint"""
-
-
-@app_views.route("/cities/city_id/places", methods=HTTP_METHODS)
-@app_views.route("/places/<place_id>", methods=HTTP_METHODS)
+@app_views.route("/cities/city_id/places", methods=['GET', 'POST'])
+@app_views.route("/places/<place_id>", methods=['GET', 'DELETE', 'PUT'])
 def place_handler(city_id=None, place_id=None):
     """Handler function for the places endpoint"""
     handlers = {
@@ -37,28 +30,16 @@ def getPlaces(city_id=None, place_id=None):
     if city_id:
         city_objs = storage.get(City, city_id)
         if city_objs:
-            place_list = []
-            if storage_t == 'db':
-                place_list = list(city_objs.places)
-            else:
-                place_all = storage.all(Place).values()
-                place_list = list(filter(lambda x: x.city_id == city_id,
-                                         place_all))
+            place_list = list(city_objs.places)
             place_dict = list(map(lambda x: x.to_dict(), place_list))
-            res_data = dumps(place_dict, indent=2)
-            return Response(res_data,
-                            content_type='application/json; charset=utf-8')
+            return make_response(jsonify(place_dict), 200)
+        raise NotFound()
     elif place_id:
         place_objs = storage.get(Place, place_id)
         if place_objs:
-            res_data = dumps(place_objs.to_dict(), indent=2)
-            return Response(res_data,
-                            content_type='application/json; charset=utf-8')
-    else:
-        errmsg = {"error": "Not found"}
-        res_data = dumps(errmsg, indent=2)
-        return Response(res_data,
-                        content_type='application/json; charset=utf-8')
+            return make_response(jsonify(place_objs.to_dict()), 200)
+        raise NotFound()
+    raise NotFound()
 
 
 def deletePlaces(city_id=None, place_id=None):
@@ -68,24 +49,15 @@ def deletePlaces(city_id=None, place_id=None):
         if place_objs:
             storage.delete(place_objs)
             storage.save()
-            res_data = dumps({}, indent=2)
-            return Response(res_data, status=200,
-                            content_type='application/json; charset=utf-8')
-    else:
-        errmsg = {"error": "Not found"}
-        res_data = dumps(errmsg, indent=2)
-        return Response(res_data,
-                        content_type='application/json; charset=utf-8')
+            return make_response(jsonify({}), 200)
+    raise NotFound()
 
 
 def postPlaces(city_id=None, place_id=None):
     """Posts or adds a new place to the object list"""
     city_objs = storage.get(City, city_id)
     if not city_objs:
-        errmsg = {"error": "Not found"}
-        res_data = dumps(errmsg, indent=2)
-        return Response(res_data,
-                        content_type='application/json; charset=utf-8')
+        raise NotFound()
     place_data = request.get_json()
     if type(place_data) is not dict:
         raise BadRequest(description="Not a JSON")
@@ -93,18 +65,13 @@ def postPlaces(city_id=None, place_id=None):
         raise BadRequest(description="Missing user_id")
     user_objs = storage.get(User, place_data['user_id'])
     if not user_objs:
-        errmsg = {"error": "Not found"}
-        res_data = dumps(errmsg, indent=2)
-        return Response(res_data,
-                        content_type='application/json; charset=utf-8')
+        raise NotFound()
     if "name" not in place_data:
         raise BadRequest(description="Missing name")
     place_data['city_id'] = city_id
     created_place = Place(**place_data)
     created_place.save()
-    res_data = dumps(created_place.to_dict(), indent=2)
-    return Response(res_data, status=201,
-                    content_type='application/json; charset=utf-8')
+    return make_response(jsonify(created_place.to_dict()), 201)
 
 
 def putPlaces(city_id=None, place_id=None):
@@ -119,17 +86,11 @@ def putPlaces(city_id=None, place_id=None):
             if key not in immut_attrs:
                 setattr(place_objs, key, value)
         place_objs.save()
-        res_data = dumps(place_objs.to_dict(), indent=2)
-        return Response(res_data,
-                        content_type='application/json; charset=utf-8')
-    else:
-        errmsg = {"error": "Not found"}
-        res_data = dumps(errmsg, indent=2)
-        return Response(res_data, status=200,
-                        content_type='application/json; charset=utf-8')
+        return make_response(jsonify(place_objs.to_dict()), 200)
+    raise NotFound()
 
 
-@app_views.route("/places_search", methods=["POST"])
+@app_views.route("/places_search", methods=['POST'])
 def postPlaces_Search():
     """Posts or adds a place based on the IDs of state, city or amenity"""
     reqdata = request.get_json()
@@ -222,5 +183,4 @@ def postPlaces_Search():
         if "amenities" in place_dict:
             del place_dict["amenities"]
         places_data.append(place_dict)
-    res_data = dumps(places_data, indent=2)
-    return Response(res_data, content_type='application/json; charset=utf-8')
+    return make_response(jsonify(places_data))
