@@ -77,3 +77,35 @@ class TestAPIAmenityStatus(unittest.TestCase):
         self.assertEqual(amenity_data['name'], 'Test Amenity')
         # clean up
         self.app.delete('/api/v1/amenities/{}'.format(amenity_data['id']))
+
+    def test_update_amenity(self):
+        """Send a PUT request to update an existing amenity
+        with a valid ID
+        """
+        data0 = {'name': 'Test Amenity'}
+        response0 = self.app.post('/api/v1/amenities', json.dumps(data0))
+        amenity_data = json.loads(response0.data)
+        amenity_id = amenity_data['id'] 
+        data = {'name': 'Updated Amenity'}
+        response = self.app.put('/api/v1/amenities/{}'.format(amenity_id),
+                                data=json.dumps(data))
+        # Assert that the status code is 404 for a non-existent amenity
+        self.assertEqual(response.status_code, 200)
+
+    def test_update_amenity_invalid(self):
+        """Send a PUT request to update an existing amenity
+        with a invalid json
+        """
+        data0 = {'name': 'Test Amenity'}
+        response0 = self.app.post('/api/v1/amenities', json.dumps(data0))
+        amenity_data = json.loads(response0.data)
+        amenity_id = amenity_data['id'] 
+        data = 'Updated Amenity'
+        response = self.app.put('/api/v1/amenities/{}'.format(amenity_id),
+                                data=json.dumps(data))
+        # Assert that the status code is 404 for a invalid amenity
+        self.assertEqual(response.status_code, 400)
+        error_data = json.loads(response.data)
+        self.assertEqual(error_data['error'], 'Not a JSON')
+        # delete the created state
+        self.app.delete('/api/v1/amenities/{}'.format(amenity_id))
