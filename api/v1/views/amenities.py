@@ -4,7 +4,7 @@ from api.v1.views import app_views
 from flask import make_response, jsonify, request
 from models import storage
 from models.amenity import Amenity
-from werkzeug.exceptions import MethodNotAllowed, BadRequest, NotFound()
+from werkzeug.exceptions import MethodNotAllowed, BadRequest, NotFound
 
 
 @app_views.route("/amenities", methods=['GET', 'POST'])
