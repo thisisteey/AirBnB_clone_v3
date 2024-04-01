@@ -37,4 +37,3 @@ class User(BaseModel, Base):
                 super().__setattr__(attr_name, hash_obj.hexdigest())
             else:
                 super().__setattr__(attr_name, attr_value)
-
