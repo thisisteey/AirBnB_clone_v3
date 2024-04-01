@@ -1,11 +1,12 @@
 #!/usr/bin/python3
 """Defines the views of handling cities in the API"""
+from json import dumps
 from api.v1.views import app_views
-from flask import jsonify, request
+from flask import Response, request
 from models import storage
 from models.state import State
 from models.city import City
-from werkzeug.exceptions import NotFound, MethodNotAllowed, BadRequest
+from werkzeug.exceptions import MethodNotAllowed, BadRequest
 
 
 HTTP_METHODS = ["GET", "DELETE", "POST", "PUT"]
@@ -34,12 +35,18 @@ def getCities(state_id=None, city_id=None):
         state_list = storage.get(State, state_id)
         if state_list:
             cty_in_sts = list(map(lambda x: x.to_dict(), state_list.cities))
-            return jsonify(cty_in_sts)
+            res_data = dumps(cty_in_sts, indent=2)
+            return Response(res_data,
+                            content_type='application/json; charset=utf-8')
     elif city_id:
         city_list = storage.get(City, city_id)
         if city_list:
-            return jsonify(city_list.to_dict())
-    raise NotFound()
+            res_data = dumps(city_list.to_dict(), indent=2)
+            return Response(res_data,
+                            content_type='application/json; charset=utf-8')
+    errmsg = {"error": "Not found"}
+    res_data = dumps(errmsg, indent=2)
+    return Response(res_data, content_type='application/json; charset=utf-8')
 
 
 def deleteCities(state_id=None, city_id=None):
@@ -49,15 +56,22 @@ def deleteCities(state_id=None, city_id=None):
         if city_list:
             storage.delete(city_list)
             storage.save()
-            return jsonify({}), 200
-    raise NotFound()
+            res_data = dumps({}, indent=2)
+            return Response(res_data, status=200,
+                            content_type='application/json; charset=utf-8')
+    errmsg = {"error": "Not found"}
+    res_data = dumps(errmsg, indent=2)
+    return Response(res_data, content_type='application/json; charset=utf-8')
 
 
 def postCities(state_id=None, city_id=None):
     """Posts or adds a new city to the object list"""
     state_list = storage.get(State, state_id)
     if not state_list:
-        raise NotFound()
+        errmsg = {"error": "Not found"}
+        res_data = dumps(errmsg, indent=2)
+        return Response(res_data,
+                        content_type='application/json; charset=utf-8')
     city_data = request.get_json()
     if type(city_data) is not dict:
         raise BadRequest(description="Not a JSON")
@@ -66,7 +80,9 @@ def postCities(state_id=None, city_id=None):
     city_data["state_id"] = state_id
     created_city = City(**city_data)
     created_city.save()
-    return jsonify(created_city.to_dict()), 201
+    res_data = dumps(created_city.to_dict(), indent=2)
+    return Response(res_data, status=201,
+                    content_type='application/json; charset=utf-8')
 
 
 def putCities(state_id=None, city_id=None):
@@ -82,5 +98,9 @@ def putCities(state_id=None, city_id=None):
                 if key not in immut_attrs:
                     setattr(city_list, key, value)
             city_list.save()
-            return jsonify(city_list.to_dict()), 200
-    raise NotFound()
+            res_data = dumps(city_list.to_dict(), indent=2)
+            return Response(res_data, status=200,
+                            content_type='application/json; charset=utf-8')
+    errmsg = {"error": "Not found"}
+    res_data = dumps(errmsg, indent=2)
+    return Response(res_data, content_type='application/json; charset=utf-8')
